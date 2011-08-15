@@ -2,7 +2,8 @@ SUBDIRS = libgnome-app-store po
 
 ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 
-@INTLTOOL_XML_RULE@
+CLEANFILES = \
+        $(version_DATA)
 
 EXTRA_DIST =			\
 	AUTHORS			\
