@@ -5,6 +5,15 @@ AM_INIT_AUTOMAKE([1.9 foreign no-dist-gzip dist-bzip2 tar-ustar])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_MACRO_DIR([m4])
+
+LT_VERSION=2:0:0
+AC_SUBST(LT_VERSION)
+
+LT_PREREQ([2.2.6])
+LT_INIT([dlopen win32-dll disable-static])
+
+IT_PROG_INTLTOOL([0.40.6])
 
 AC_PROG_CC
 PKG_PROG_PKG_CONFIG
