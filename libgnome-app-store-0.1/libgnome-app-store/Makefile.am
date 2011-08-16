@@ -14,7 +14,7 @@ AM_CPPFLAGS =							\
 AM_CFLAGS = $(WARN_CFLAGS)
 
 introspection_sources = 		\
-	libgnome-app-store-utils.c		
+	libgnome-app-store.c		
 
 libgnome_app_store_0_1_la_SOURCES = 	\
 	$(introspection_sources)	
@@ -25,7 +25,7 @@ libgnome_app_store_0_1_la_LIBADD =	\
 
 libgnome_app_store_0_1_la_LDFLAGS = \
 	-version-info $(LT_VERSION) \
-        -export-symbols-regex "^gnome_.*" \
+        -export-symbols-regex "^libgnome_.*" \
 	-no-undefined
 
 pkgconfigdir = $(libdir)/pkgconfig
@@ -33,7 +33,7 @@ pkgconfig_DATA = libgnome-app-store-0.1.pc
 
 libgnome_app_storedir = $(includedir)/libgnome-app-store-0.1/libgnome-app-store
 libgnome_app_store_HEADERS = \
-        libgnome-app-store-utils.h           
+        libgnome-app-store.h      
 
 -include $(INTROSPECTION_MAKEFILE)
 INTROSPECTION_GIRS =
@@ -43,7 +43,7 @@ INTROSPECTION_COMPILER_ARGS = --includedir=$(srcdir)
 if HAVE_INTROSPECTION
 
 LibgnomeAppStore-0.1.gir: libgnome-app-store-0.1.la
-LibgnomeAppStore_0_1_gir_INCLUDES = GObject-2.0 Gtk-3.0 GnomeDesktop-3.0.gir
+LibgnomeAppStore_0_1_gir_INCLUDES = GObject-2.0 Gtk-3.0 GnomeDesktop-3.0
 LibgnomeAppStore_0_1_gir_PACKAGES = gdk-pixbuf-2.0 glib-2.0 gobject-2.0 gio-2.0 gtk+-3.0 gnome-desktop-3.0 gsettings-desktop-schemas
 LibgnomeAppStore_0_1_gir_CFLAGS = -DGNOME_DESKTOP_USE_UNSTABLE_API -I$(top_srcdir)
 LibgnomeAppStore_0_1_gir_LIBS = libgnome-app-store-0.1.la
