@@ -1,0 +1,11 @@
+prefix=/usr
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libgnome-app-store-0.1
+Description: Utility library for loading online app store files
+Requires: gtk+-3.0 gsettings-desktop-schemas gnome-desktop-3.0
+Version: 0.1
+Libs: -L${libdir} -llibgnome-app-store-0.1
+Cflags: -I${includedir}/libgnome-app-store-0.1
