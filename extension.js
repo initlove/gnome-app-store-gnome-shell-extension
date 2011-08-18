@@ -62,33 +62,32 @@ function main() {
 
    let logo = new St.Icon({ icon_type: St.IconType.FULLCOLOR, icon_size: hotCornerButton.height, icon_name: 'suse' });
    let box = new St.BoxLayout();
-
    let text = new St.Label({ style_class: 'corn-label', text: "dl" });
    box.add_actor(text);
    box.add_actor(logo);
-
    Main.panel.button.set_child(box);
 
-   let store = new Store.AppStore ();
-   let id = "gnome-volume-control.desktop";     
-   let name;
-   name = store.get_name_from_id (id);
-
-   let text1 = new St.Label({ style_class: 'corn-label', text: name });
+//-------------------app store -----------
    let logo1 = new St.Icon({ icon_type: St.IconType.FULLCOLOR, icon_size: hotCornerButton.height, icon_name: 'suse' });
    let box1 = new St.BoxLayout({ vertical: true });
-
    let grid = new IconGrid.IconGrid({ xAlign: St.Align.START });
    box1.add(grid.actor, { y_align: St.Align.START, expand: true });
-   grid.addItem (text1);
    grid.addItem (logo1);
+
+   let store = new Store.AppStore ();
+   let i;
+   for (let i=0; i<20; i++) {
+	let id = store.get_nth_app (i);
+	let name = store.get_name_from_id (id);
+   	let text1 = new St.Label({ style_class: 'corn-label', text: name });
+   	grid.addItem (text1);
+    }
 
 //   let appIcon = new MyAppWellIcon(store, id);
 //   grid.addItem(appIcon.actor);
 
-   let appSystem = Shell.AppSystem.get_default();
-
    let selector = new Shell.GenericContainer({ name: 'gnome-app-store' });
 
    Main.overview.viewSelector.addViewTab('gnome-app-store', _("GNOME App Store"), box1);
+
 }
