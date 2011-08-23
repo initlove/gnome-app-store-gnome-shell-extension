@@ -17,29 +17,27 @@ Author: David Liang <dliang@novell.com>
 #include <glib/gdir.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
+#include <string.h>
 
 #include <gdk/gdkx.h>
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
+#include <clutter/clutter.h>
 
 #include <cairo.h>
 #include <cairo-xlib.h>
 #include "gnome-app-store.h"
 
-struct _GnomeAppStore
+struct _GnomeAppStorePrivate
 {
-	GObject                 parent_instance;
 	gchar *			file_uri;
 	gchar *			dir_uri;
 
 	GSList *		apps;
 	GHashTable *		id_to_name;
 	GHashTable *		id_to_icon;
-};
-
-struct _GnomeAppStoreClass
-{
-	GObjectClass parent_class;
+	GHashTable *		icon_store;
+	GHashTable *		default_icon_store;
 };
 
 enum {
@@ -84,6 +82,7 @@ get_type_from_name (gchar *name)
 static void
 add_app (GnomeAppStore *store, xmlNodePtr app_node)
 {
+        GnomeAppStorePrivate *priv = store->priv;
         xmlNodePtr node, sub_node;
         PKG_KEY_WORDS type;
 #ifdef DEBUG
@@ -99,14 +98,14 @@ add_app (GnomeAppStore *store, xmlNodePtr app_node)
                                 printf ("desktp id %s\t", xmlNodeGetContent (node));
 #endif
 				app_id = g_strdup (xmlNodeGetContent (node));
-				store->apps = g_slist_append (store->apps, app_id);
+				priv->apps = g_slist_append (priv->apps, app_id);
                                 break;
                         case PKG_PKGNAME:
                                 break;
                         case PKG_NAME:
 //we have the lang here!
 //                              printf ("pkg name %s\t", xmlNodeGetContent (node));
-				g_hash_table_insert (store->id_to_name, g_strdup (app_id), g_strdup (xmlNodeGetContent (node)));
+				g_hash_table_insert (priv->id_to_name, g_strdup (app_id), g_strdup (xmlNodeGetContent (node)));
                                 break;
                         case PKG_SUMMARY:
                                 break;
@@ -114,7 +113,7 @@ add_app (GnomeAppStore *store, xmlNodePtr app_node)
 #ifdef DEBUG
                                 printf ("icon %s\t", xmlNodeGetContent (node));
 #endif
-				g_hash_table_insert (store->id_to_icon, g_strdup (app_id), g_strdup (xmlNodeGetContent (node)));
+				g_hash_table_insert (priv->id_to_icon, g_strdup (app_id), g_strdup (xmlNodeGetContent (node)));
                                 break;
                         case PKG_APPCATEGORIES:
 #ifdef DEBUG
@@ -148,10 +147,11 @@ add_app (GnomeAppStore *store, xmlNodePtr app_node)
 static void
 load_apps (GnomeAppStore *store)
 {
+        GnomeAppStorePrivate *priv = store->priv;
         xmlDocPtr doc_ptr;
         xmlNodePtr root_node, apps_node, app_node;
 
-        doc_ptr = xmlParseFile (store->file_uri);
+        doc_ptr = xmlParseFile (priv->file_uri);
 
         root_node = xmlDocGetRootElement (doc_ptr);
 
@@ -165,15 +165,53 @@ load_apps (GnomeAppStore *store)
 }
 
 static void
+load_icons (GnomeAppStore *store)
+{
+	GDir *dir;
+	const gchar *basename;
+	gchar *filename;
+	gchar *p, *content;
+	GnomeAppStorePrivate *priv = store->priv;
+
+	dir = g_dir_open (priv->dir_uri, 0, NULL);
+	if (!dir) {
+		printf ("cannot open dir\n");
+			return;
+	}
+                
+	while ((basename = g_dir_read_name (dir)) != NULL) {
+		filename = g_build_filename (priv->dir_uri, basename, NULL);
+		content = g_strdup (basename);
+		p = strrchr (content, '.');
+		if (p)
+			*p = 0;
+                        
+		g_hash_table_insert (priv->icon_store, content, filename);
+	}
+	g_dir_close (dir);
+}
+
+static void
 gnome_app_store_init (GnomeAppStore *store)
 {
-	store->apps = NULL;
-	store->file_uri = NULL;
-	store->dir_uri = NULL;
+	GnomeAppStorePrivate *priv;
 
-	store->id_to_name = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
-	store->id_to_icon = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
-	store->file_uri = g_strdup ("/tmp/appdata.xml");
+	store->priv = priv = G_TYPE_INSTANCE_GET_PRIVATE (store,
+                                                   GNOME_TYPE_APP_STORE,
+                                                   GnomeAppStorePrivate);
+
+	priv->apps = NULL;
+	priv->file_uri = NULL;
+	priv->dir_uri = NULL;
+
+	priv->id_to_name = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+	priv->id_to_icon = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+	priv->icon_store = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+	priv->default_icon_store = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+	priv->file_uri = g_strdup ("/tmp/appdata.xml");
+	priv->dir_uri = g_strdup ("/tmp/icons");
+
+	load_icons (store);
 	load_apps (store);
 }
 
@@ -187,10 +225,11 @@ static void
 gnome_app_store_finalize (GObject *object)
 {
 	GnomeAppStore *store = GNOME_APP_STORE (object);
-
-	if (store->file_uri) {
-		g_free (store->file_uri);
-		store->file_uri = NULL;
+	GnomeAppStorePrivate *priv = store->priv;
+/*FIXME: should free lots of things ... */
+	if (priv->file_uri) {
+		g_free (priv->file_uri);
+		priv->file_uri = NULL;
 	}
 
 	G_OBJECT_CLASS (gnome_app_store_parent_class)->finalize (object);
@@ -203,6 +242,8 @@ gnome_app_store_class_init (GnomeAppStoreClass *klass)
 
 	object_class->dispose = gnome_app_store_dispose;
 	object_class->finalize = gnome_app_store_finalize;
+	 
+	g_type_class_add_private (object_class, sizeof (GnomeAppStorePrivate));
 }
 
 GnomeAppStore *
@@ -211,20 +252,116 @@ gnome_app_store_new (void)
 	return g_object_new (GNOME_TYPE_APP_STORE, NULL);
 }
 
+/**
+ * gnome_app_store_get_apps
+ *
+ * get all the apps from the given store
+ *
+ * Return value: (transfer none): GSList 
+ */
+
 GSList *
 gnome_app_store_get_apps (GnomeAppStore *store)
 {
-	return store->apps;
+        GnomeAppStorePrivate *priv = store->priv;
+
+	return priv->apps;
 }
 
 const gchar *
 gnome_app_store_get_name_from_id (GnomeAppStore *store, gchar *id)
 {
-	return g_hash_table_lookup (store->id_to_name, id);
+        GnomeAppStorePrivate *priv = store->priv;
+
+	return g_hash_table_lookup (priv->id_to_name, id);
+}
+
+ClutterActor *
+create_default_icon ()
+{
+	ClutterActor *actor;
+
+	actor = clutter_texture_new_from_file ("/tmp/icons/default.png", NULL);
+	clutter_actor_set_width (actor, 64);
+	clutter_actor_set_height (actor, 64);
+	return actor;
+}
+/**
+ * gnome_app_store_get_icon_from_id
+ *
+ * Make up a decent icon for this application, 
+ * FIXME: add more args, for it at the given size.
+ *
+ * Return value: (transfer none): A floating #ClutterActor
+ */
+
+/*FIXME: should clean the is default to the server side */
+ClutterActor *
+gnome_app_store_get_icon_from_id (GnomeAppStore *store, gchar *id)
+{
+        GnomeAppStorePrivate *priv = store->priv;
+	const char *icon_name, *icon_uri;
+	gchar *p, *content;
+
+	ClutterActor *tex = NULL;
+
+	icon_name = g_hash_table_lookup (priv->id_to_icon, id);
+	if (icon_name) {
+		content = g_strdup (icon_name);
+		p = strrchr (content, '.');
+		if (p)
+			*p = 0;
+	} else {
+//FIXME: better way to clean the default icon store 				
+		g_hash_table_insert (priv->default_icon_store, g_strdup (id), g_strdup (id));
+		return create_default_icon ();
+	}
+	icon_uri = g_hash_table_lookup (priv->icon_store, content);
+
+	if (icon_uri)
+		tex = clutter_texture_new_from_file (icon_uri, NULL);
+
+	if (!tex) {
+		g_hash_table_insert (priv->default_icon_store, g_strdup (id), g_strdup (id));
+		tex = create_default_icon ();
+	}
+
+	g_free (content);
+
+	clutter_actor_set_width (tex, 64);
+	clutter_actor_set_height (tex, 64);
+
+	return CLUTTER_ACTOR (tex);
+}
+
+gboolean
+gnome_app_store_is_default_icon (GnomeAppStore *store, gchar *id)
+{
+        GnomeAppStorePrivate *priv = store->priv;
+	if (g_hash_table_lookup (priv->default_icon_store, id))
+		return TRUE;
+	return FALSE;
+}
+
+guint
+gnome_app_store_get_counts (GnomeAppStore *store)
+{
+        GnomeAppStorePrivate *priv = store->priv;
+
+	return g_slist_length (priv->apps);
 }
 
 const gchar *
-gnome_app_store_get_icon_from_id (GnomeAppStore *store, gchar *id)
+gnome_app_store_get_nth_app (GnomeAppStore *store, guint pos)
 {
-	return g_hash_table_lookup (store->id_to_icon, id);
+        GnomeAppStorePrivate *priv = store->priv;
+	GSList *l;
+	guint i;
+
+	for (i = 0, l = priv->apps; (i < pos) && l; i++, l = l->next) {
+	}
+
+	return (gchar *) l->data;
 }
+
+

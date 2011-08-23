@@ -26,6 +26,7 @@
 #include <gdk/gdk.h>
 #include <gio/gio.h>
 #include <gdesktop-enums.h>
+#include <clutter/clutter.h>
 
 G_BEGIN_DECLS
 
@@ -38,13 +39,28 @@ G_BEGIN_DECLS
 
 typedef struct _GnomeAppStore GnomeAppStore;
 typedef struct _GnomeAppStoreClass GnomeAppStoreClass;
+typedef struct _GnomeAppStorePrivate GnomeAppStorePrivate;
+
+struct _GnomeAppStore
+{
+        GObject                 parent_instance;
+	
+	GnomeAppStorePrivate	*priv;
+};
+
+struct _GnomeAppStoreClass
+{
+        GObjectClass parent_class;
+};
 
 GType  		          gnome_app_store_get_type              (void);
-GnomeAppStore *        gnome_app_store_new                   (void);
-
-GSList *		  gnome_app_store_get_apps		   (GnomeAppStore *store);
+GnomeAppStore *        	  gnome_app_store_new                   (void);
+guint			  gnome_app_store_get_counts            (GnomeAppStore *store);
+const gchar *             gnome_app_store_get_nth_app		(GnomeAppStore *store, guint pos);
+GSList *		  gnome_app_store_get_apps		(GnomeAppStore *store);
 const gchar *		  gnome_app_store_get_name_from_id      (GnomeAppStore *store, gchar *id);
-const gchar *		  gnome_app_store_get_icon_from_id      (GnomeAppStore *store, gchar *id);
+gboolean		  gnome_app_store_is_default_icon       (GnomeAppStore *store, gchar *id);
+ClutterActor *		  gnome_app_store_get_icon_from_id      (GnomeAppStore *store, gchar *id);
 
 G_END_DECLS
 

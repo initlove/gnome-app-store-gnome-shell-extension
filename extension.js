@@ -5,6 +5,7 @@ const Mainloop = imports.mainloop;
 const IconGrid = imports.ui.iconGrid;
 const Main = imports.ui.main;
 const Shell = imports.gi.Shell;
+const Clutter = imports.gi.Clutter;
 const Store = imports.gi.GnomeAppStore;
 
 function MyAppIcon(app, params) {
@@ -44,6 +45,14 @@ MyAppWellIcon.prototype = {
     }
 }
 
+function _showHello() {
+    let text = new St.Label({ style_class: 'helloworld-label', text: "David said: Harmony world!" });
+    let monitor = global.get_primary_monitor();
+    global.stage.add_actor(text);
+    text.set_position(Math.floor (monitor.width / 2 - text.width / 2), Math.floor(monitor.height / 2 - text.height / 2));
+    Mainloop.timeout_add(3000, function () { text.destroy(); });
+}
+
 // Put your extension initialization code here
 function main() {
 //-------------------app store -----------
@@ -52,16 +61,19 @@ function main() {
    box1.add(grid.actor, { y_align: St.Align.START, expand: true });
 
    let store = new Store.AppStore ();
-   for (let i=0; i<20; i++) {
-	let id = store.get_nth_app (i);
-	let name = store.get_name_from_id (id);
-   	let text1 = new St.Label({ style_class: 'corn-label', text: name });
-   	grid.addItem (text1);
+   let app_act;
+   let i, id, name, text1;
+   let is_default;
+   let counts;
+   counts = store.get_counts ();
+   for (i=0; i< counts; i++) {
+	id = store.get_nth_app (i);
+	name = store.get_name_from_id (id);
+	app_act = store.get_icon_from_id (id);
+        is_default = store.is_default_icon (id);
+	if (!is_default)
+		grid.addItem (app_act);
     }
-
-//   let appIcon = new MyAppWellIcon(store, id);
-//   grid.addItem(appIcon.actor);
-
    let selector = new Shell.GenericContainer({ name: 'gnome-app-store' });
 
    Main.overview.viewSelector.addViewTab('gnome-app-store', _("GNOME App Store"), box1);
