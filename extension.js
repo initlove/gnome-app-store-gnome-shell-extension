@@ -56,9 +56,10 @@ function _showHello() {
 // Put your extension initialization code here
 function main() {
 //-------------------app store -----------
-   let box1 = new St.BoxLayout({ vertical: true });
-   let grid = new IconGrid.IconGrid({ xAlign: St.Align.START });
-   box1.add(grid.actor, { y_align: St.Align.START, expand: true });
+   let box = new St.BoxLayout({ vertical: true });
+   let stage = new Store.AppStage ();
+
+   box.add(stage);
 
    let store = new Store.AppStore ();
    let app_act;
@@ -66,16 +67,18 @@ function main() {
    let is_default;
    let counts;
    counts = store.get_counts ();
+
+   counts = 100;
+
    for (i=0; i< counts; i++) {
 	id = store.get_nth_app (i);
 	name = store.get_name_from_id (id);
 	app_act = store.get_icon_from_id (id);
         is_default = store.is_default_icon (id);
-	if (!is_default)
-		grid.addItem (app_act);
+	if (!is_default) {
+		stage.add_actor (app_act);
+	}
     }
-   let selector = new Shell.GenericContainer({ name: 'gnome-app-store' });
 
-   Main.overview.viewSelector.addViewTab('gnome-app-store', _("GNOME App Store"), box1);
-
+   Main.overview.viewSelector.addViewTab('gnome-app-store', _("GNOME App Store"), box);
 }
