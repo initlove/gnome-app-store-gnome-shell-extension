@@ -23,7 +23,6 @@
 #ifndef __GNOME_APP_STORE_H__
 #define __GNOME_APP_STORE_H__
 
-#include <gdk/gdk.h>
 #include <gio/gio.h>
 #include <gdesktop-enums.h>
 #include <clutter/clutter.h>
@@ -58,9 +57,9 @@ GnomeAppStore *        	  gnome_app_store_new                   (void);
 guint			  gnome_app_store_get_counts            (GnomeAppStore *store);
 const gchar *             gnome_app_store_get_nth_app		(GnomeAppStore *store, guint pos);
 GSList *		  gnome_app_store_get_apps		(GnomeAppStore *store);
-const gchar *		  gnome_app_store_get_name_from_id      (GnomeAppStore *store, gchar *id);
-gboolean		  gnome_app_store_is_default_icon       (GnomeAppStore *store, gchar *id);
-ClutterActor *		  gnome_app_store_get_icon_from_id      (GnomeAppStore *store, gchar *id);
+const gchar *		  gnome_app_store_get_name_from_id      (GnomeAppStore *store, const gchar *id);
+gboolean		  gnome_app_store_is_default_icon       (GnomeAppStore *store, const gchar *id);
+ClutterActor *		  gnome_app_store_get_icon_from_id      (GnomeAppStore *store, const gchar *id);
 
 G_END_DECLS
 

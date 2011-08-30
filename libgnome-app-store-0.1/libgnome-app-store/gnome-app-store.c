@@ -26,7 +26,10 @@ Author: David Liang <dliang@novell.com>
 
 #include <cairo.h>
 #include <cairo-xlib.h>
+
+#include "local-app.h"
 #include "gnome-app-store.h"
+
 
 struct _GnomeAppStorePrivate
 {
@@ -34,10 +37,10 @@ struct _GnomeAppStorePrivate
 	gchar *			dir_uri;
 
 	GSList *		apps;
+	GSList *		default_icon_store;
 	GHashTable *		id_to_name;
 	GHashTable *		id_to_icon;
 	GHashTable *		icon_store;
-	GHashTable *		default_icon_store;
 };
 
 enum {
@@ -89,15 +92,23 @@ add_app (GnomeAppStore *store, xmlNodePtr app_node)
         printf ("node infos: \t");
 #endif
 	gchar *app_id = NULL;
+	gchar *p;
 
         for (node = app_node->xmlChildrenNode; node; node = node->next) {
                 type = get_type_from_name ((gchar *)(node->name));
                 switch (type) {
                         case PKG_ID:
+				p = xmlNodeGetContent (node);
 #ifdef DEBUG
-                                printf ("desktp id %s\t", xmlNodeGetContent (node));
+                                printf ("desktp id %s\t", p);
 #endif
-				app_id = g_strdup (xmlNodeGetContent (node));
+				/*filter the local app
+					FIXME: should add a monitor to refresh */
+				if (is_local_app (p)) {
+					return;
+				}
+
+				app_id = g_strdup (p);
 				priv->apps = g_slist_append (priv->apps, app_id);
                                 break;
                         case PKG_PKGNAME:
@@ -203,11 +214,11 @@ gnome_app_store_init (GnomeAppStore *store)
 	priv->apps = NULL;
 	priv->file_uri = NULL;
 	priv->dir_uri = NULL;
+	priv->default_icon_store = NULL;
 
 	priv->id_to_name = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
 	priv->id_to_icon = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
 	priv->icon_store = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
-	priv->default_icon_store = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
 	priv->file_uri = g_strdup ("/tmp/appdata.xml");
 	priv->dir_uri = g_strdup ("/tmp/icons");
 
@@ -269,7 +280,7 @@ gnome_app_store_get_apps (GnomeAppStore *store)
 }
 
 const gchar *
-gnome_app_store_get_name_from_id (GnomeAppStore *store, gchar *id)
+gnome_app_store_get_name_from_id (GnomeAppStore *store, const gchar *id)
 {
         GnomeAppStorePrivate *priv = store->priv;
 
@@ -297,7 +308,7 @@ create_default_icon ()
 
 /*FIXME: should clean the is default to the server side */
 ClutterActor *
-gnome_app_store_get_icon_from_id (GnomeAppStore *store, gchar *id)
+gnome_app_store_get_icon_from_id (GnomeAppStore *store, const gchar *id)
 {
         GnomeAppStorePrivate *priv = store->priv;
 	const char *icon_name, *icon_uri;
@@ -313,7 +324,7 @@ gnome_app_store_get_icon_from_id (GnomeAppStore *store, gchar *id)
 			*p = 0;
 	} else {
 //FIXME: better way to clean the default icon store 				
-		g_hash_table_insert (priv->default_icon_store, g_strdup (id), g_strdup (id));
+		priv->default_icon_store = g_slist_prepend (priv->default_icon_store, g_strdup (id));
 		return create_default_icon ();
 	}
 	icon_uri = g_hash_table_lookup (priv->icon_store, content);
@@ -322,7 +333,7 @@ gnome_app_store_get_icon_from_id (GnomeAppStore *store, gchar *id)
 		tex = clutter_texture_new_from_file (icon_uri, NULL);
 
 	if (!tex) {
-		g_hash_table_insert (priv->default_icon_store, g_strdup (id), g_strdup (id));
+		priv->default_icon_store = g_slist_prepend (priv->default_icon_store, g_strdup (id));
 		tex = create_default_icon ();
 	}
 
@@ -334,12 +345,21 @@ gnome_app_store_get_icon_from_id (GnomeAppStore *store, gchar *id)
 	return CLUTTER_ACTOR (tex);
 }
 
+/*FIXME: should be used after 
+	gnome_app_store_get_icon_from_id
+*/
 gboolean
-gnome_app_store_is_default_icon (GnomeAppStore *store, gchar *id)
+gnome_app_store_is_default_icon (GnomeAppStore *store, const gchar *id)
 {
         GnomeAppStorePrivate *priv = store->priv;
-	if (g_hash_table_lookup (priv->default_icon_store, id))
-		return TRUE;
+	GSList *l;
+
+	for (l = priv->default_icon_store; l; l = l->next) {
+		if (strcmp (id, l->data) == 0) {
+			return TRUE;
+		}
+	}
+
 	return FALSE;
 }
 
