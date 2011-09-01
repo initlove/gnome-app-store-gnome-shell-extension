@@ -115,8 +115,8 @@ gnome_app_stage_init (GnomeAppStage *stage)
 	clutter_actor_set_reactive (priv->viewport, TRUE);
 
 	priv->layout = clutter_table_layout_new ();
-	clutter_table_layout_set_column_spacing (CLUTTER_TABLE_LAYOUT (priv->layout), priv->icon_width * 0.5);
-	clutter_table_layout_set_row_spacing (CLUTTER_TABLE_LAYOUT (priv->layout), priv->icon_width * 0.5);
+	clutter_table_layout_set_column_spacing (CLUTTER_TABLE_LAYOUT (priv->layout), priv->icon_width * 0.3);
+	clutter_table_layout_set_row_spacing (CLUTTER_TABLE_LAYOUT (priv->layout), priv->icon_width * 0.3);
 
 	priv->layout_box = clutter_box_new (priv->layout);
   

@@ -58,6 +58,7 @@ guint			  gnome_app_store_get_counts            (GnomeAppStore *store);
 const gchar *             gnome_app_store_get_nth_app		(GnomeAppStore *store, guint pos);
 GSList *		  gnome_app_store_get_apps		(GnomeAppStore *store);
 const gchar *		  gnome_app_store_get_name_from_id      (GnomeAppStore *store, const gchar *id);
+const gchar *		  gnome_app_store_get_pkgname_from_id   (GnomeAppStore *store, const gchar *id);
 gboolean		  gnome_app_store_is_default_icon       (GnomeAppStore *store, const gchar *id);
 ClutterActor *		  gnome_app_store_get_icon_from_id      (GnomeAppStore *store, const gchar *id);
 

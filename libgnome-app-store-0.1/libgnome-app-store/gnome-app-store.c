@@ -30,7 +30,6 @@ Author: David Liang <dliang@novell.com>
 #include "local-app.h"
 #include "gnome-app-store.h"
 
-
 struct _GnomeAppStorePrivate
 {
 	gchar *			file_uri;
@@ -39,6 +38,7 @@ struct _GnomeAppStorePrivate
 	GSList *		apps;
 	GSList *		default_icon_store;
 	GHashTable *		id_to_name;
+	GHashTable *		id_to_pkgname;
 	GHashTable *		id_to_icon;
 	GHashTable *		icon_store;
 };
@@ -112,6 +112,10 @@ add_app (GnomeAppStore *store, xmlNodePtr app_node)
 				priv->apps = g_slist_append (priv->apps, app_id);
                                 break;
                         case PKG_PKGNAME:
+#ifdef DEBUG
+				printf ("pkgfull %s\t", xmlNodeGetContent (node));
+#endif
+				g_hash_table_insert (priv->id_to_pkgname, g_strdup (app_id), g_strdup (xmlNodeGetContent (node)));
                                 break;
                         case PKG_NAME:
 //we have the lang here!
@@ -217,6 +221,7 @@ gnome_app_store_init (GnomeAppStore *store)
 	priv->default_icon_store = NULL;
 
 	priv->id_to_name = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+	priv->id_to_pkgname = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
 	priv->id_to_icon = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
 	priv->icon_store = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
 	priv->file_uri = g_strdup ("/tmp/appdata.xml");
@@ -280,6 +285,14 @@ gnome_app_store_get_apps (GnomeAppStore *store)
 }
 
 const gchar *
+gnome_app_store_get_pkgname_from_id (GnomeAppStore *store, const gchar *id)
+{
+        GnomeAppStorePrivate *priv = store->priv;
+
+	return g_hash_table_lookup (priv->id_to_pkgname, id);
+}
+
+const gchar *
 gnome_app_store_get_name_from_id (GnomeAppStore *store, const gchar *id)
 {
         GnomeAppStorePrivate *priv = store->priv;
@@ -287,16 +300,18 @@ gnome_app_store_get_name_from_id (GnomeAppStore *store, const gchar *id)
 	return g_hash_table_lookup (priv->id_to_name, id);
 }
 
-ClutterActor *
-create_default_icon ()
+static gboolean
+on_app_clicked (gpointer userdata)
 {
-	ClutterActor *actor;
-
-	actor = clutter_texture_new_from_file ("/tmp/icons/default.png", NULL);
-	clutter_actor_set_width (actor, 64);
-	clutter_actor_set_height (actor, 64);
-	return actor;
+	gchar *pkgname = (gchar *) userdata;
+	printf ("on app clicked %s\n", pkgname);
+                
+	gchar *cmd;
+	cmd = g_strdup_printf ("/sbin/YaST2 -i %s &", pkgname);
+	system (cmd);
+	g_free (cmd);
 }
+
 /**
  * gnome_app_store_get_icon_from_id
  *
@@ -312,37 +327,62 @@ gnome_app_store_get_icon_from_id (GnomeAppStore *store, const gchar *id)
 {
         GnomeAppStorePrivate *priv = store->priv;
 	const char *icon_name, *icon_uri;
-	gchar *p, *content;
-
-	ClutterActor *tex = NULL;
+	const char *app_name, *pkg_name;
 
 	icon_name = g_hash_table_lookup (priv->id_to_icon, id);
 	if (icon_name) {
+		gchar *p, *content;
 		content = g_strdup (icon_name);
 		p = strrchr (content, '.');
 		if (p)
 			*p = 0;
+		icon_uri = g_hash_table_lookup (priv->icon_store, content);
+		g_free (content);
 	} else {
-//FIXME: better way to clean the default icon store 				
-		priv->default_icon_store = g_slist_prepend (priv->default_icon_store, g_strdup (id));
-		return create_default_icon ();
+		icon_uri = NULL;
 	}
-	icon_uri = g_hash_table_lookup (priv->icon_store, content);
+
+	app_name = gnome_app_store_get_name_from_id (store, id);
+
+	ClutterActor *actor, *box, *text;
+	ClutterActor *icon = NULL; //*FIXME we have icon, but can not be recognized by clutter
+	ClutterLayoutManager *layout;
+	ClutterAction *action;
+
+	layout = clutter_box_layout_new ();
+	clutter_box_layout_set_vertical (CLUTTER_BOX_LAYOUT (layout), TRUE);
+	clutter_box_layout_set_spacing (CLUTTER_BOX_LAYOUT (layout), 6);
+
+	box = clutter_box_new (layout);
+	text = clutter_text_new ();
+	clutter_text_set_ellipsize (CLUTTER_TEXT (text), PANGO_ELLIPSIZE_END);
+	clutter_text_set_text (CLUTTER_TEXT (text), app_name);
+	clutter_actor_set_width (text, 64);
+	clutter_actor_set_height (text, 16);
+	clutter_container_add_actor (CLUTTER_CONTAINER (box), text);
 
 	if (icon_uri)
-		tex = clutter_texture_new_from_file (icon_uri, NULL);
+		icon = clutter_texture_new_from_file (icon_uri, NULL);
 
-	if (!tex) {
-		priv->default_icon_store = g_slist_prepend (priv->default_icon_store, g_strdup (id));
-		tex = create_default_icon ();
+	if (!icon) {
+//FIXME: better way to clean the default icon store 				
+		store->priv->default_icon_store = g_slist_prepend (store->priv->default_icon_store, g_strdup (id));
+		icon = clutter_texture_new_from_file ("/tmp/icons/default.png", NULL);
 	}
+        
 
-	g_free (content);
+	clutter_container_add_actor (CLUTTER_CONTAINER (box), icon);
 
-	clutter_actor_set_width (tex, 64);
-	clutter_actor_set_height (tex, 64);
+	clutter_actor_set_width (icon, 64);
+	clutter_actor_set_height (icon, 64);
+ 
+	clutter_actor_set_reactive (box, TRUE);
 
-	return CLUTTER_ACTOR (tex);
+	pkg_name = gnome_app_store_get_pkgname_from_id (store, id);
+ 	g_signal_connect_swapped (box, "button-press-event",
+                            G_CALLBACK (on_app_clicked), pkg_name);
+
+	return CLUTTER_ACTOR (box);
 }
 
 /*FIXME: should be used after 
