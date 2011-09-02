@@ -19,21 +19,16 @@ Author: David Liang <dliang@novell.com>
 #include <libxml/tree.h>
 #include <string.h>
 
-#include <gdk/gdkx.h>
-#include <X11/Xlib.h>
-#include <X11/Xatom.h>
 #include <clutter/clutter.h>
 
-#include <cairo.h>
-#include <cairo-xlib.h>
 
 #include "local-app.h"
+#include "gnome-app-config.h"
 #include "gnome-app-store.h"
 
 struct _GnomeAppStorePrivate
 {
-	gchar *			file_uri;
-	gchar *			dir_uri;
+	gchar *			cache_dir;
 
 	GSList *		apps;
 	GSList *		default_icon_store;
@@ -165,8 +160,11 @@ load_apps (GnomeAppStore *store)
         GnomeAppStorePrivate *priv = store->priv;
         xmlDocPtr doc_ptr;
         xmlNodePtr root_node, apps_node, app_node;
+	gchar *file_uri;
 
-        doc_ptr = xmlParseFile (priv->file_uri);
+	file_uri = g_build_filename (priv->cache_dir, "appdata.xml", NULL);
+
+        doc_ptr = xmlParseFile (file_uri);
 
         root_node = xmlDocGetRootElement (doc_ptr);
 
@@ -177,6 +175,7 @@ load_apps (GnomeAppStore *store)
         }
 
         xmlFreeDoc(doc_ptr);
+	g_free (file_uri);
 }
 
 static void
@@ -188,14 +187,18 @@ load_icons (GnomeAppStore *store)
 	gchar *p, *content;
 	GnomeAppStorePrivate *priv = store->priv;
 
-	dir = g_dir_open (priv->dir_uri, 0, NULL);
+	gchar *icon_dir;
+	icon_dir = g_build_filename (priv->cache_dir, "icons", NULL);
+	dir = g_dir_open (icon_dir, 0, NULL);
+
 	if (!dir) {
 		printf ("cannot open dir\n");
-			return;
+		g_free (icon_dir);
+		return;
 	}
                 
 	while ((basename = g_dir_read_name (dir)) != NULL) {
-		filename = g_build_filename (priv->dir_uri, basename, NULL);
+		filename = g_build_filename (icon_dir, basename, NULL);
 		content = g_strdup (basename);
 		p = strrchr (content, '.');
 		if (p)
@@ -204,6 +207,7 @@ load_icons (GnomeAppStore *store)
 		g_hash_table_insert (priv->icon_store, content, filename);
 	}
 	g_dir_close (dir);
+	g_free (icon_dir);
 }
 
 static void
@@ -216,16 +220,17 @@ gnome_app_store_init (GnomeAppStore *store)
                                                    GnomeAppStorePrivate);
 
 	priv->apps = NULL;
-	priv->file_uri = NULL;
-	priv->dir_uri = NULL;
 	priv->default_icon_store = NULL;
 
 	priv->id_to_name = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
 	priv->id_to_pkgname = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
 	priv->id_to_icon = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
 	priv->icon_store = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
-	priv->file_uri = g_strdup ("/tmp/appdata.xml");
-	priv->dir_uri = g_strdup ("/tmp/icons");
+
+	GnomeAppConfig *conf;
+	conf = gnome_app_config_new ();
+	priv->cache_dir = gnome_app_config_get_cache_dir (conf);
+	g_object_unref (conf);
 
 	load_icons (store);
 	load_apps (store);
@@ -243,9 +248,8 @@ gnome_app_store_finalize (GObject *object)
 	GnomeAppStore *store = GNOME_APP_STORE (object);
 	GnomeAppStorePrivate *priv = store->priv;
 /*FIXME: should free lots of things ... */
-	if (priv->file_uri) {
-		g_free (priv->file_uri);
-		priv->file_uri = NULL;
+	if (priv->cache_dir) {
+		g_free (priv->cache_dir);
 	}
 
 	G_OBJECT_CLASS (gnome_app_store_parent_class)->finalize (object);
@@ -358,7 +362,6 @@ gnome_app_store_get_icon_from_id (GnomeAppStore *store, const gchar *id)
 	clutter_text_set_ellipsize (CLUTTER_TEXT (text), PANGO_ELLIPSIZE_END);
 	clutter_text_set_text (CLUTTER_TEXT (text), app_name);
 	clutter_actor_set_width (text, 64);
-	clutter_actor_set_height (text, 16);
 	clutter_container_add_actor (CLUTTER_CONTAINER (box), text);
 
 	if (icon_uri)
@@ -366,16 +369,15 @@ gnome_app_store_get_icon_from_id (GnomeAppStore *store, const gchar *id)
 
 	if (!icon) {
 //FIXME: better way to clean the default icon store 				
-		store->priv->default_icon_store = g_slist_prepend (store->priv->default_icon_store, g_strdup (id));
-		icon = clutter_texture_new_from_file ("/tmp/icons/default.png", NULL);
+		priv->default_icon_store = g_slist_prepend (priv->default_icon_store, g_strdup (id));
+		gchar *default_icon;
+		default_icon = g_build_filename (priv->cache_dir, "icons", "default.png", NULL); 
+		icon = clutter_texture_new_from_file (default_icon, NULL);
+		g_free (default_icon);
 	}
-        
-
-	clutter_container_add_actor (CLUTTER_CONTAINER (box), icon);
-
 	clutter_actor_set_width (icon, 64);
 	clutter_actor_set_height (icon, 64);
- 
+	clutter_container_add_actor (CLUTTER_CONTAINER (box), icon);
 	clutter_actor_set_reactive (box, TRUE);
 
 	pkg_name = gnome_app_store_get_pkgname_from_id (store, id);

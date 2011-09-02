@@ -4,9 +4,10 @@ lib_LTLIBRARIES = libgnome-app-store-0.1.la
 
 AM_CPPFLAGS =							\
 	-I$(top_srcdir)						\
-	$(GNOME_APP_STORE_CFLAGS)					\
+	$(GNOME_APP_STORE_CFLAGS)				\
 	$(XLIB_CFLAGS)						\
-	-DG_LOG_DOMAIN=\"GnomeAppStore\"				\
+        -DCONFIGDIR=\""/etc/gnome-app-store\""                        	\
+	-DG_LOG_DOMAIN=\"GnomeAppStore\"			\
 	-DGNOMELOCALEDIR=\""$(prefix)/$(DATADIRNAME)/locale\""	\
 	-DPNP_IDS=\""$(PNP_IDS)"\"				\
 	$(DISABLE_DEPRECATED_CFLAGS)
@@ -14,6 +15,8 @@ AM_CPPFLAGS =							\
 AM_CFLAGS = $(WARN_CFLAGS)
 
 introspection_sources = 		\
+	gnome-app-config.c gnome-app-config.h \
+	gnome-app-server.c gnome-app-server.h \
 	gnome-app-store.c gnome-app-store.h \
 	gnome-app-stage.c gnome-app-stage.h
 
@@ -47,6 +50,9 @@ test_scrolling_SOURCES = 	\
 test_scrolling_LDADD =		\
         $(top_builddir)/libgnome-app-store/libgnome-app-store-0.1.la \
         $(GNOME_APP_STORE_LIBS)
+
+appconfigdir = /etc/gnome-app-store
+appconfig_DATA = gnome-app-store.conf
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = gnome-app-store-0.1.pc
