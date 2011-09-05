@@ -1,5 +1,5 @@
 AC_INIT([gnome-app-store], 0.1)
-AC_CONFIG_SRCDIR([libgnome-app-store])
+AC_CONFIG_SRCDIR([src])
 
 AM_INIT_AUTOMAKE([1.9 foreign no-dist-gzip dist-bzip2 tar-ustar])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
@@ -57,8 +57,8 @@ GOBJECT_INTROSPECTION_CHECK([0.9.7])
 
 AC_CONFIG_FILES([
 Makefile
-libgnome-app-store/Makefile
-libgnome-app-store/gnome-app-store-0.1.pc
+src/Makefile
+src/gnome-app-store-0.1.pc
 po/Makefile.in
 ])
 
