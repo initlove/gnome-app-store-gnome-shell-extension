@@ -103,7 +103,11 @@ gnome_app_config_get_cache_dir (GnomeAppConfig *config)
 		g_error_free (error);
 		val = g_build_filename (g_get_home_dir (), ".gnome-app-store", "cache", NULL);
 	}
-
+/*FIXME: this is just for test usage*/
+	if (!g_file_test (val, G_FILE_TEST_EXISTS)) {
+		g_free (val);
+		val = g_build_filename (g_get_current_dir (), "../test-data", NULL);
+	}
 	return val;
 }
 
