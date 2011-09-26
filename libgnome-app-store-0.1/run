@@ -1,2 +1,3 @@
+libtoolize -if
 autoreconf -if
 ./configure --prefix="/usr"
